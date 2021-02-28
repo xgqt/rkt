@@ -31,12 +31,17 @@ esac
 
 
 # Dependencies
+
 RACKET_DEPEND+="
 	>=dev-scheme/racket-7.0[-minimal]
 	acct-group/portage
 	acct-user/portage
-	sys-apps/baselayout-racket
 "
+
+if [[ "${PN}" != baselayout-racket ]]; then
+	RACKET_DEPEND+="sys-apps/baselayout-racket"
+fi
+
 RDEPEND+="${RACKET_DEPEND}"
 DEPEND+="${RACKET_DEPEND}"
 
@@ -61,6 +66,11 @@ racket_environment_prepare() {
 
 	xdg_environment_reset
 
+	# Don't put EPREFIX here
+	# If we would have had EPREFIX here the resulting merge onto system would
+	# repeat the var (as it adds EPREFIX also when it copies the IMAGE):
+	# assuming EPREFIX is "/home/user/gentoo":
+	#          /home/user/gento/home/user/gento/usr/share/racket/gentoo
 	export GENTOO_RACKET_PREFIX="/usr/share/racket/gentoo"
 
 	# Where the ebuild merges the packages
@@ -88,14 +98,18 @@ racket_src_prepare() {
 }
 
 
-# @FUNCTION: raco_make
+# @FUNCTION: racket_make
 # @DESCRIPTION:
-# Find '.rkt' files and compile them
+# Compile racket source in current directory
 
-raco_make() {
-	einfo "Compiling racket source files with 'raco make'"
+racket_make() {
+	einfo "Compiling racket source files"
 
-	find . -name "*.rkt" -exec raco make -v {} \;
+	racket -e "(require compiler/compiler setup/getinfo)
+			   (define info (get-info/full \".\"))
+			   (compile-directory-zos
+				 (path->complete-path (string->path \".\")) info #:verbose #f)" \
+		|| die "compile failed"
 }
 
 
@@ -122,12 +136,12 @@ raco_remove() {
 # @DESCRIPTION:
 # Default src_compile:
 #
-# Executes 'raco_make'
+# Executes 'racket_make'
 
 racket_src_compile() {
 	einfo "Running Racket src_compile"
 
-	raco_make
+	racket_make
 }
 
 
@@ -178,10 +192,10 @@ racket_src_install() {
 
 	einstalldocs
 
-	local inst="${D}${GENTOO_RACKET_DIR}"
+	local inst="${D}${P_RACKET_DIR}"
 
-	mkdir -p "${inst}" || die "raco_install failed"
-	cp -r "${S}" "${inst}/${PN}" || die "raco_install failed"
+	mkdir -p "${D}${GENTOO_RACKET_DIR}" || die "raco_install failed"
+	cp -r "${S}" "${D}${P_RACKET_DIR}" || die "raco_install failed"
 }
 
 
