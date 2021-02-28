@@ -105,11 +105,31 @@ racket_src_prepare() {
 racket_make() {
 	einfo "Compiling racket source files"
 
-	racket -e "(require compiler/compiler setup/getinfo)
-			   (define info (get-info/full \".\"))
-			   (compile-directory-zos
-				 (path->complete-path (string->path \".\")) info #:verbose #f)" \
-		|| die "compile failed"
+	# For compilation to go smoothly we have to set PLTUSERHOME
+	# ... again
+	export PLTUSERHOME="${HOME}/${P}"
+	mkdir -p "${PLTUSERHOME}/.racket"
+
+	# TODO: Later try to enable docs
+	local raco_opts=(
+		--batch
+		--deps force
+		--force
+		--jobs "$(nproc)"
+		--link
+		--no-docs
+		--scope user
+	)
+
+	eval raco pkg install "${raco_opts[@]}" \
+		|| ewarn "failed: raco pkg install ${raco_opts[@]}"
+
+	# Then remove PLTUSERHOME set here to
+	# avoid "pkg is allready installed"
+	rm -r "${PLTUSERHOME}"
+
+	# then reset to "system" values
+	racket_environment_prepare
 }
 
 

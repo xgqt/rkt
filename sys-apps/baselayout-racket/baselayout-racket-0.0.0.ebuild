@@ -28,6 +28,9 @@ src_install() {
 	insinto "${PLTUSERHOME}"
 	newins "racketrc" ".racketrc"
 
+	insinto "/etc/env.d"
+	doins "99plt"
+
 	insinto "/etc/profile.d"
 	doins "plt.sh"
 }
